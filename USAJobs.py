@@ -8,7 +8,9 @@ import json
 
 EMPTY_STR = ' '
 TAB = '\t'
-url = "https://data.usajobs.gov/api/Search" 
+URL = "https://data.usajobs.gov/api/Search"
+MIN_ACCEPTABLE_GRADE = 8
+MAX_ACCEPTABLE_GRADE = 12
 
 headers = {
     'authorization-key': config.authorization_key,
@@ -40,26 +42,6 @@ keywords = [ "budget", "desk", "financial",
 # FUNCTIONS #
 #############
 
-def get_scrubbed_job_description():
-    qual_summary = str(responses['SearchResult']['SearchResultItems'][i]
-                          ['MatchedObjectDescriptor']['QualificationSummary'])
-
-    job_summary = str(responses['SearchResult']['SearchResultItems'][i]
-                      ['MatchedObjectDescriptor']['UserArea']
-                      ['Details']['JobSummary'])
-
-    job_description = qual_summary + job_summary
-    
-    job_description = job_description.replace('\n', ' ').replace('\r', '')
-
-    return job_description
-
-def get_job_title():
-    job_title = str(responses['SearchResult']['SearchResultItems'][i]
-                    ['MatchedObjectDescriptor']['PositionTitle'])
-
-    return job_title
-
 def write_file_headers():
     f.write("Position Title" + TAB +
             "Job Function" + TAB +
@@ -67,62 +49,88 @@ def write_file_headers():
             "Department Name" + TAB +
             "Position ID" + TAB +
             "Position Schedule" + TAB +
-            "Industry" + TAB +
+            "Low Grade" + TAB +
+            "High Grade" + TAB +
+            "Industry" + TAB +  # Legacy column
             "Academic Qualification Needed" + TAB +
-            "Previous Experience" + TAB +
+            "Previous Experience" + TAB + # Legacy Column
             "JD Text" + '\n')
 
+def get_scrubbed_job_description():
+    qual_summary = str(curr_job['QualificationSummary'])
+    job_summary = str(curr_job['UserArea']['Details']['JobSummary'])
+
+    job_description = qual_summary + job_summary
+    job_description = job_description.replace('\n', ' ').replace('\r', '')
+    return job_description
+
+def get_job_title():
+    job_title = str(curr_job['PositionTitle'])
+    return job_title
+
 def get_org_name():
-    org_name = str(responses['SearchResult']['SearchResultItems'][i]
-                   ['MatchedObjectDescriptor']['OrganizationName'])
+    org_name = str(curr_job['OrganizationName'])
     return org_name
 
 def get_dept_name():
-    dept_name = str(responses['SearchResult']['SearchResultItems'][i]
-                   ['MatchedObjectDescriptor']['DepartmentName'])
+    dept_name = str(curr_job['DepartmentName'])
     return dept_name
 
 def get_job_function():
-    job_function = str(responses['SearchResult']['SearchResultItems'][i]
-                       ['MatchedObjectDescriptor']['JobCategory']
-                       [0]['Name'])
+    job_function = str(curr_job['JobCategory'][0]['Name'])
     return job_function
 
 def get_academic_qualifications():
     try:
-        quals = str(responses['SearchResult']['SearchResultItems'][i]
-                    ['MatchedObjectDescriptor']['UserArea']['Details']
-                    ['Education'])
+        quals = str(curr_job['UserArea']['Details']['Education'])
     except:
         quals = EMPTY_STR
     return quals
 
 def get_position_ID():
-    position_id = str(responses['SearchResult']['SearchResultItems'][i]
-                      ['MatchedObjectDescriptor']['PositionID'])
-
+    position_id = str(curr_job['PositionID'])
     return position_id
 
 def get_position_url():
-    position_url = str(responses['SearchResult']['SearchResultItems'][i]
-                       ['MatchedObjectDescriptor']['PositionURI'])
+    position_url = str(curr_job['PositionURI'])
+    return position_url
 
 def get_position_schedule():
-    position_schedule = str(responses['SearchResult']['SearchResultItems'][i]
-                            ['MatchedObjectDescriptor']['PositionSchedule']
-                            [0]['Name'])
-
+    position_schedule = str(curr_job['PositionSchedule'][0]['Name'])
     return position_schedule
 
-def is_not_part_time():
-    position_schedule = str(responses['SearchResult']['SearchResultItems'][i]
-                            ['MatchedObjectDescriptor']['PositionSchedule'][0]
-                            ['Name'])
+def is_part_time():
+    position_schedule = str(curr_job['PositionSchedule'][0]['Name'])
 
     if ('Part' or 'part' or 'PART') in position_schedule:
-        return False
-    else:
         return True
+    else:
+        return False
+
+def get_grade_low():
+    low_grade = int(curr_job['UserArea']['Details']['LowGrade'])
+    return low_grade
+
+def get_grade_high():
+    high_grade = int(curr_job['UserArea']['Details']['HighGrade'])
+    return high_grade
+
+def is_outside_grade_range():
+    if get_grade_high() < MIN_ACCEPTABLE_GRADE:
+        return True
+    if get_grade_low() > MAX_ACCEPTABLE_GRADE:
+        return True
+    return False
+
+def job_meets_criteria():
+    try: 
+        if is_part_time():
+            return False
+        if is_outside_grade_range():
+            return False
+        return True
+    except:
+        return False
 
 #############
 # MAIN CODE #
@@ -132,40 +140,46 @@ f = open("public_sector.tsv", "w")
 
 write_file_headers()
 
-for keyword in range(len(keywords)):
+for keyword in keywords:
 
-    searchparam = {'PositionTitle': keywords[keyword], 'ResultsPerPage': 500}
+    searchparam = {'PositionTitle': keyword, 'ResultsPerPage': 500}
 
-    response = requests.get(url, headers=headers, params=searchparam)
+    response = requests.get(URL, headers=headers, params=searchparam)
     responses = response.json()
     
-    print(keywords[keyword] + ": " +
-          str(responses['SearchResult']['SearchResultCount']))
+    print(keyword + ": " + str(responses['SearchResult']['SearchResultCount']))
 
     for i in range(responses['SearchResult']['SearchResultCount']):
 
-        # Collect data
-        job_title = get_job_title()
-        job_description = get_scrubbed_job_description()
-        dept_name = get_dept_name()
-        org_name = get_org_name()
-        job_function = get_job_function()
-        quals = get_academic_qualifications()
-        position_url = get_position_url()
-        position_id = get_position_ID()
-        position_schedule = get_position_schedule()
+        curr_job = responses['SearchResult']['SearchResultItems'][i]['MatchedObjectDescriptor']
 
-        # Write non-part time jobs to file
-        if is_not_part_time():
+        if job_meets_criteria(): 
+
+            # Collect data
+            job_title = get_job_title()
+            job_function = get_job_function()
+            org_name = get_org_name()
+            dept_name = get_dept_name()
+            position_id = get_position_ID()
+            position_schedule = get_position_schedule()
+            low_grade = str(get_grade_low())
+            high_grade = str(get_grade_high())
+            job_description = get_scrubbed_job_description()
+            quals = get_academic_qualifications()
+            position_url = get_position_url()
+
+            # Write to file
             f.write(job_title + TAB +
                     job_function + TAB +
                     org_name + TAB +
                     dept_name + TAB +
                     position_id + TAB +
-                    position_schedule + TAB + 
-                    EMPTY_STR + TAB +
+                    position_schedule + TAB +
+                    low_grade + TAB +
+                    high_grade + TAB + 
+                    EMPTY_STR + TAB +  # Legacy Column - Industry
                     quals + TAB +
-                    EMPTY_STR + TAB +
+                    EMPTY_STR + TAB +  # Legacy Column - Prev Exp
                     job_description + '\n')
 
 f.close()
