@@ -36,7 +36,9 @@ keywords = [ "budget", "desk", "financial",
              "public information", "research", "resource",
              "science technology weapons", "security", "supply",
              "supply chain", "targeting", "foreign service officer",
-             "special agent", "security professional" ]
+             "special agent", "security professional", "department of state",
+             "usaid", "department of commerce", "treasury", "ustr", "cia",
+             "fbi", "defense intelligence agency", "dhs" ]
 
 #############
 # FUNCTIONS #
@@ -142,7 +144,7 @@ write_file_headers()
 
 for keyword in keywords:
 
-    searchparam = {'PositionTitle': keyword, 'ResultsPerPage': 500}
+    searchparam = {'Keyword': keyword, 'ResultsPerPage': 500}
 
     response = requests.get(URL, headers=headers, params=searchparam)
     responses = response.json()
