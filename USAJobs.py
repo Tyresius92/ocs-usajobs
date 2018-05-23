@@ -38,7 +38,8 @@ keywords = [ "budget", "desk", "financial",
              "supply chain", "targeting", "foreign service officer",
              "special agent", "security professional", "department of state",
              "usaid", "department of commerce", "treasury", "ustr", "cia",
-             "fbi", "defense intelligence agency", "dhs" ]
+             "fbi", "defense intelligence agency", "dhs",
+             "library of congress" ]
 
 #############
 # FUNCTIONS #
