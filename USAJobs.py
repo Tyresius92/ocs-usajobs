@@ -52,6 +52,7 @@ def write_file_headers():
             "Department Name" + TAB +
             "Position ID" + TAB +
             "Position Schedule" + TAB +
+            "Posting Date" + TAB +
             "Low Grade" + TAB +
             "High Grade" + TAB +
             "Industry" + TAB +  # Legacy column
@@ -102,6 +103,10 @@ def get_position_schedule():
     position_schedule = str(curr_job['PositionSchedule'][0]['Name'])
     return position_schedule
 
+def get_position_posting_date():
+    posting_date = str(curr_job['PublicationStartDate'])
+    return posting_date
+
 def is_part_time():
     position_schedule = str(curr_job['PositionSchedule'][0]['Name'])
 
@@ -145,7 +150,7 @@ write_file_headers()
 
 for keyword in keywords:
 
-    searchparam = {'Keyword': keyword, 'ResultsPerPage': 500}
+    searchparam = {'Keyword': keyword, 'ResultsPerPage': 500, 'DatePosted': 35}
 
     response = requests.get(URL, headers=headers, params=searchparam)
     responses = response.json()
@@ -165,6 +170,7 @@ for keyword in keywords:
             dept_name = get_dept_name()
             position_id = get_position_ID()
             position_schedule = get_position_schedule()
+            posting_date = get_position_posting_date()
             low_grade = str(get_grade_low())
             high_grade = str(get_grade_high())
             job_description = get_scrubbed_job_description()
@@ -178,6 +184,7 @@ for keyword in keywords:
                     dept_name + TAB +
                     position_id + TAB +
                     position_schedule + TAB +
+                    posting_date + TAB +
                     low_grade + TAB +
                     high_grade + TAB + 
                     EMPTY_STR + TAB +  # Legacy Column - Industry
