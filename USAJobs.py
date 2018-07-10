@@ -150,7 +150,7 @@ write_file_headers()
 
 for keyword in keywords:
 
-    searchparam = {'Keyword': keyword, 'ResultsPerPage': 500, 'DatePosted': 35}
+    searchparam = {'Keyword': keyword, 'ResultsPerPage': 500, 'DatePosted': 45}
 
     response = requests.get(URL, headers=headers, params=searchparam)
     responses = response.json()
